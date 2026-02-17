@@ -126,7 +126,7 @@ def back_test(df=None, pred_len=20, show=False):
     if show:
         plot_prediction(kline_df, pred_df)
     else:
-        return pred_df['close'].iloc[-1] > df['close'].iloc[-1]
+        return pred_df['close'].iloc[-1] - df['close'].iloc[-1]
 
 
 if __name__ == '__main__':

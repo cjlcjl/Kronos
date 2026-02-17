@@ -64,3 +64,47 @@ def get_china_future_timestamps(start_time, periods):
     res = pd.to_datetime(future_times[:periods]).tz_localize(None)
 
     return res
+
+
+def get_china_future_timestampsV2(start_time, periods, freq='5min'):
+    """
+    支持多种频率的未来交易时间生成
+    :param start_time: 起始时间
+    :param periods: 预测步数
+    :param freq: 频率，支持 '5min', '60min' (或 'H'), '1D' (或 'D')
+    """
+    start_time = pd.to_datetime(start_time)
+    if start_time.tz is None:
+        start_time = start_time.tz_localize('Asia/Shanghai')
+
+    sse = mcal.get_calendar('XSHG')
+
+    # 动态计算 end_date，防止 periods 很大时 30 天不够用
+    # 日线需要的天数更多，5分钟线需要的天数较少
+    days_buffer = periods * 2 if 'D' in freq.upper() else (periods // 4) + 30
+    end_date = (start_time + pd.Timedelta(days=days_buffer)).date()
+
+    schedule = sse.schedule(start_date=start_time.date(), end_date=end_date)
+
+    # 1. 如果是日线频率
+    if freq.upper() in ['1D', 'D']:
+        # 直接获取交易日序列，取其开盘时间或只取日期
+        all_times = schedule.index
+        # schedule.index 默认是 DatetimeIndex (UTC)
+        all_times_sh = all_times.tz_localize('UTC').tz_convert('Asia/Shanghai')
+
+    # 2. 如果是分钟/小时频率
+    else:
+        # 使用 mcal.date_range 生成盘中细分序列
+        # 注意：pandas_market_calendars 的 'H' 可能会包含中午休市时间，
+        # 如果需要精准去掉 A 股 11:30-13:00，建议用 '60min'
+        all_times = mcal.date_range(schedule, frequency=freq)
+        all_times_sh = all_times.tz_convert('Asia/Shanghai')
+
+    # 过滤掉过去的时间
+    future_times = [t for t in all_times_sh if t > start_time]
+
+    # 取够个数并去掉时区
+    res = pd.to_datetime(future_times[:periods]).tz_localize(None)
+
+    return res
