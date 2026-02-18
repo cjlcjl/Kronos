@@ -141,8 +141,7 @@ def predict_future(df=None, pred_len=20, period='1D', show=False):
     predictor = KronosPredictor(model, tokenizer, max_context=512)
 
     # 3. Prepare Data
-    # df = pd.read_csv("./data/XSHG_5min_600977.csv")
-    df = pd.read_csv("../examples/data/XSHG_5min_600977_V2.csv") if df is None else df
+    df = pd.read_csv("../examples/data/XSHG_5min_600977.csv") if df is None else df
     df['timestamps'] = pd.to_datetime(df['timestamps'])
 
     lookback = 512

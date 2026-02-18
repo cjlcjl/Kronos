@@ -1,9 +1,51 @@
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from Tools.tools import get_basic, get_china_future_timestampsV2
 from model import KronosPredictor
+
+
+def evaluate_prediction(kline_df, pred_df, lookback=512):
+    # 1. 数据切片
+    # 历史最后一点的价格（作为计算涨跌幅的基准）
+    last_close = kline_df['close'].iloc[lookback - 1]
+
+    # 获取真实发生的未来价格序列
+    actual_series = kline_df['close'].iloc[lookback:]
+    # 获取预测的价格序列
+    pred_series = pred_df['close']
+
+    # 1. 计算终点涨跌幅(Gap)
+    pred_change = (pred_series.iloc[-1] - last_close) / last_close
+    actual_change = (actual_series.iloc[-1] - last_close) / last_close
+
+    # 2. 计算偏差
+    error_gap = pred_change - actual_change
+
+    # 3. 计算平均偏离度 (MAPE)
+    y_true = actual_series.values
+    y_pred = pred_series.values
+    # 过滤掉分母为 0 的情况（防止出现 inf）
+    mask = y_true != 0
+    # 公式: mean( |(真实 - 预测) / 真实| ) * 100
+    mape = np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+
+    # 4. 计算方向是否正确 (Hit)
+    is_correct = (pred_change * actual_change) > 0
+
+    # 预测评估
+
+    result = {
+        '预测涨幅': f'{pred_change:.2%}',
+        '实际涨幅': f'{actual_change:.2%}',
+        '预测偏差(Gap)': f'{error_gap:.2%}',
+        '平均偏离度(MAPE)': f'{mape:.2f}%',
+        '预测方向是否正确': is_correct,
+    }
+
+    return result
 
 
 def plot_prediction(kline_df, pred_df):
@@ -167,7 +209,7 @@ def plot_backtest_refined(kline_df, pred_df, period='1D', lookback=512):
 
 
 # 回测
-def back_test(df=None, pred_len=20, period='1D', show=False):
+def stock_back_test(df=None, pred_len=20, period='1D', show=False):
     tokenizer, model = get_basic()
 
     # 2. Instantiate Predictor
@@ -213,8 +255,8 @@ def back_test(df=None, pred_len=20, period='1D', show=False):
     if show:
         plot_backtest_refined(kline_df, pred_df, period=period, lookback=lookback)
 
-    return pred_df['close'].iloc[-1] - df['close'].iloc[-1]
+    return evaluate_prediction(kline_df, pred_df, lookback)
 
 
 if __name__ == '__main__':
-    back_test()
+    stock_back_test()
