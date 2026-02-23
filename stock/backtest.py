@@ -245,8 +245,8 @@ def stock_back_test(df=None, pred_len=20, period='1D', show=False):
     )
 
     # 5. Visualize Results
-    print("Forecasted Data Head:")
-    print(pred_df.head())
+    # print("Forecasted Data Head:")
+    # print(pred_df.head())
 
     # Combine historical and forecasted data for plotting
     kline_df = df.loc[:lookback + pred_len - 1]
